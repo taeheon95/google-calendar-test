@@ -30,7 +30,7 @@ function CalendarContainer(props: Props) {
       });
       setEventList(result.items);
     }
-  }, []);
+  }, [period]);
 
   useEffect(() => {}, [eventList]);
 
