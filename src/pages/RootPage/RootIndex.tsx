@@ -8,18 +8,11 @@ import React, {
 import { GoogleCalendarList } from "../../types/calendar";
 import RootContainer from "./RootContainer";
 import { getGoogleCalendarList as googleCalendarListGetApi } from "../../apis/calendar";
-import { getRefreshedAccessTokens } from "../../apis/auth";
+import { getRefreshAccessTokens } from "../../apis/auth";
 import { GoogleCalendarEventList } from "../../types/event";
-
-const googleCalendarUri = "https://www.googleapis.com/calendar/v3";
+import { DateTime } from "luxon";
 
 interface Prop {
-  clientId: string;
-  clientSecret: string;
-  scope: string;
-  access_type: string;
-  include_granted_scopes: boolean;
-  redirectUrl: string;
   oauthUrl: string;
 }
 
@@ -27,7 +20,12 @@ function RootIndex(props: Prop) {
   const { oauthUrl } = props;
 
   const [googleCalendarList, setGoogleCalendarList] =
-    useState<GoogleCalendarList>();
+    useState<GoogleCalendarList>({
+      etag: "",
+      items: [],
+      kind: "",
+      nextSyncToken: "",
+    });
 
   const [events, setEvents] = useState<GoogleCalendarEventList>();
 
@@ -49,7 +47,7 @@ function RootIndex(props: Prop) {
     const refreshToken = localStorage.getItem("refresh_token");
     try {
       if (refreshToken !== null && refreshToken !== undefined) {
-        const response = await getRefreshedAccessTokens(refreshToken);
+        const response = await getRefreshAccessTokens(refreshToken);
         localStorage.setItem("access_token", response.access_token);
       } else {
         throw new Error("refresh 토큰이 없습니다.");
@@ -61,8 +59,12 @@ function RootIndex(props: Prop) {
 
   const getScheduleList = useCallback(async (calendarId: string) => {
     const accessToken = localStorage.getItem("access_token");
-    const timeMin = "2022-07-01T00:00:00Z";
-    const timeMax = "2022-07-31T00:00:00Z";
+    const timeMin = DateTime.now()
+      .startOf("month")
+      .toFormat("yyyy-LL-ddThh:mm:ssZ");
+    const timeMax = DateTime.now()
+      .endOf("month")
+      .toFormat("yyyy-LL-ddThh:mm:ssZ");
     if (accessToken !== null && accessToken !== undefined) {
       const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?timeMax=${timeMax}&timeMin=${timeMin}`;
       const response = await fetch(url, {

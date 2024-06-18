@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { GoogleCalendarItem } from "../../types/calendar";
 import {
   GoogleCalendarEvent,
@@ -6,73 +6,79 @@ import {
 } from "../../types/event";
 import { RRule, RRuleSet, rrulestr } from "rrule";
 import Schedule from "../Schedule";
+import { getEventList } from "../../apis/event";
+import { DateTime } from "luxon";
 
-function CalendarContainer(props: GoogleCalendarItem) {
-  const { id } = props;
+interface Props extends GoogleCalendarItem {
+  period: {
+    from: DateTime;
+    to: DateTime;
+  };
+}
+
+function CalendarContainer(props: Props) {
+  const { id, period } = props;
   const [eventList, setEventList] = useState<GoogleCalendarEvent[]>([]);
-  const timeMin = useMemo(() => {
-    return new Date("2022-07-01T00:00:00Z");
-  }, []);
-  const timeMax = useMemo(() => {
-    return new Date("2022-09-01T00:00:00Z");
-  }, []);
+  const timeMin = `${period.from.toJSDate().toISOString()}`;
+  const timeMax = `${period.to.toJSDate().toISOString()}`;
   const getScheduleList = useCallback(async () => {
     const accessToken = localStorage.getItem("access_token")!;
     if (accessToken !== null && accessToken !== undefined) {
-      const url = `https://www.googleapis.com/calendar/v3/calendars/${id}/events?timeMax=${timeMax.toISOString()}&timeMin=${timeMin.toISOString()}`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+      const result = await getEventList(accessToken, id, timeMin, timeMax);
+      result.items.forEach((item) => {
+        item.recurrence && processGoogleRepeatRule(item, result.items);
       });
-      if (response.ok) {
-        const responseData = (await response.json()) as GoogleCalendarEventList;
-        console.log(responseData);
-        const items = responseData.items;
-
-        responseData.items.forEach((item) => {
-          item.recurrence && processGoogleRepeatRule(item, items);
-        });
-
-        setEventList((state: GoogleCalendarEvent[]) => {
-          return items;
-        });
-      }
+      setEventList(result.items);
     }
   }, []);
 
+  useEffect(() => {}, [eventList]);
+
   const processGoogleRepeatRule = useCallback(
     (event: GoogleCalendarEvent, eventList: GoogleCalendarEvent[]) => {
-      const recurrence = event?.recurrence?.at(0) ?? "";
-      console.log(recurrence);
-
       const startDate = new Date(
         event.start.date ?? event.start.dateTime ?? ""
       );
-      const dtstart = startDate.toISOString().replace(/(:|\-|(\.\d\d\d))/g, "");
-      const repeatRule = RRule.fromString(`DTSTART:${dtstart}\n${recurrence}`);
-      console.log(repeatRule.options);
-      console.log(repeatRule);
-      console.log(repeatRule.between(timeMin, timeMax));
-      const endDate = new Date(event.end.date ?? event.end.dateTime ?? "");
-      const diff = endDate.getTime() - startDate.getTime();
-      const dateDiff = Math.ceil(
-        (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24)
-      );
-      const repeatDates = repeatRule.between(timeMin, timeMax);
-      console.log(repeatDates);
-      repeatDates.forEach((date) => {
-        eventList.push({
-          ...event,
-          id: `${event.id}_${date.toISOString()}`,
-          start: { dateTime: date.toISOString(), timeZone: "" },
-          end: {
-            dateTime: new Date(date.getTime() + diff).toISOString(),
-            timeZone: "",
-          },
-        });
-      });
+      const dtstart = `DTSTART:${startDate
+        .toISOString()
+        .replace(/(:|\-|(\.\d\d\d))/g, "")}`;
+      if (event.recurrence) {
+        const rruleSetStr = [dtstart, ...event.recurrence].join("\n");
+        const rruleSet = rrulestr(rruleSetStr);
+        const endDate = new Date(event.end.date ?? event.end.dateTime ?? "");
+        if (rruleSet.options.freq === RRule.YEARLY) {
+          const rrule = new RRule({
+            ...rruleSet.options,
+            bymonthday: startDate.getDate(),
+          });
+          console.log(rrule.toString());
+          const rDates = rrule.between(
+            period.from.toJSDate(),
+            period.to.toJSDate()
+          );
+          console.log(rDates);
+        }
+        const repeatDates = rruleSet.between(
+          period.from.toJSDate(),
+          period.to.toJSDate()
+        );
+        // const rrule = rruleSet.all();
+        const diff = endDate.getTime() - startDate.getTime();
+        const dateDiff = Math.ceil(
+          (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24)
+        );
+      }
+      // repeatDates.forEach((date) => {
+      //   eventList.push({
+      //     ...event,
+      //     id: `${event.id}_${date?.toISOString()}`,
+      //     start: { dateTime: date?.toISOString(), timeZone: '' },
+      //     end: {
+      //       dateTime: new Date(date.getTime() + diff).toISOString(),
+      //       timeZone: '',
+      //     },
+      //   });
+      // });
     },
     []
   );
@@ -85,16 +91,16 @@ function CalendarContainer(props: GoogleCalendarItem) {
           <span>{event.summary}</span>
           <div>
             <span>시작 : </span>
-            <span>{event.start.date ?? event.start.dateTime ?? ""}</span>
+            <span>{event.start?.date ?? event.start?.dateTime ?? ""}</span>
           </div>
           <div>
             <span>종료 : </span>
-            <span>{event.end.date ?? event.end.dateTime ?? ""}</span>
+            <span>{event.end?.date ?? event.end?.dateTime ?? ""}</span>
           </div>
           {event?.recurrence?.at(0) && (
             <div>
               <span>반복 규칙 : </span>
-              <span>{event?.recurrence?.at(0) ?? ""}</span>
+              <span>{event?.recurrence?.join("\n")}</span>
             </div>
           )}
         </div>

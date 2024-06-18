@@ -1,5 +1,47 @@
 import { GoogleListType, Reminder } from "./common";
 
+export interface GoogleCalendarEvent {
+  kind: string;
+  etag: string;
+  id: string;
+  status: string;
+  htmlLink: string;
+  created: string;
+  updated: string;
+  summary: string;
+  creator: GoogleUser;
+  organizer: GoogleUser;
+  start: GoogleCalendarEventTime;
+  end: GoogleCalendarEventTime;
+  transparency: string;
+  iCalUID: string;
+  sequence: number;
+  reminders: Reminders;
+  eventType: string;
+  description?: string;
+  location?: string;
+  colorId?: string;
+  endTimeUnspecified?: boolean;
+  recurrence?: string[];
+  recurringEventId?: string;
+  originalStartTime?: GoogleCalendarEventTime;
+  visibility?: string;
+  attendees?: GoogleCalendarEventAttendee[];
+  attendeesOmitted?: boolean;
+  extendedProperties?: extendedProperty;
+  hangoutLink?: string;
+  conferenceData?: ConferenceData;
+  gadget?: Gadget;
+  anyoneCanAddSelf?: boolean;
+  guestsCanInviteOthers?: boolean;
+  guestsCanModify?: boolean;
+  guestsCanSeeOtherGuests?: boolean;
+  privateCopy?: boolean;
+  locked?: boolean;
+  source?: CalendarEventSource;
+  attachments?: CalendarEventAttachment[];
+}
+
 export interface GoogleUser {
   id?: string;
   email: string;
@@ -94,48 +136,6 @@ export interface CalendarEventAttachment {
   mimeType: string;
   iconLink: string;
   fileId: string;
-}
-
-export interface GoogleCalendarEvent {
-  kind: string;
-  etag: string;
-  id: string;
-  status: string;
-  htmlLink: string;
-  created: string;
-  updated: string;
-  summary: string;
-  creator: GoogleUser;
-  organizer: GoogleUser;
-  start: GoogleCalendarEventTime;
-  end: GoogleCalendarEventTime;
-  transparency: string;
-  iCalUID: string;
-  sequence: number;
-  reminders: Reminders;
-  eventType: string;
-  description?: string;
-  location?: string;
-  colorId?: string;
-  endTimeUnspecified?: boolean;
-  recurrence?: string[];
-  recurringEventId?: string;
-  originalStartTime?: GoogleCalendarEventTime;
-  visibility?: string;
-  attendees?: GoogleCalendarEventAttendee[];
-  attendeesOmitted?: boolean;
-  extendedProperties?: extendedProperty;
-  hangoutLink?: string;
-  conferenceData?: ConferenceData;
-  gadget?: Gadget;
-  anyoneCanAddSelf?: boolean;
-  guestsCanInviteOthers?: boolean;
-  guestsCanModify?: boolean;
-  guestsCanSeeOtherGuests?: boolean;
-  privateCopy?: boolean;
-  locked?: boolean;
-  source?: CalendarEventSource;
-  attachments?: CalendarEventAttachment[];
 }
 
 export interface GoogleCalendarEventList
